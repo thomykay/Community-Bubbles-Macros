@@ -1,0 +1,65 @@
+## Macro title: user-info
+## Macro has a body: N
+## Body processing: Selected body processing option
+## Output: Selected output option
+##
+## Developed by: Thomy Kay
+## Date created: dd/mm/yyyy
+## Installed by: My Name
+
+## This is an example macro
+## @param display:title=Display|type=enum|enumValues=fullname,username,email,signup,lastlogin,previouslogin,locale|required=true|desc=What to display?
+## @param user:title=User|type=string|required=false|desc=The User to display the information about, either a username or one of the following meta values: @creator - page creator, @self - currently logged in user, @owner - space creator). Defaults to @creator.
+## @param profileLink:title=Profile Link|type=boolean|required=false|default=false|desc=Should the snippet of information be a link to the users profile. Default is false
+
+#set($containerManagerClass=$action.class.forName('com.atlassian.spring.container.ContainerManager'))
+#set($getInstanceMethod=$containerManagerClass.getDeclaredMethod('getInstance',null))
+#set($containerManager=$getInstanceMethod.invoke(null,null))
+#set($containerContext=$containerManager.containerContext)
+## the userManager gives you access to the spaces of confluence
+#set($userManager = $containerContext.getComponent('userManager'))
+#set($spaceManager = $containerContext.getComponent('spaceManager'))
+#set($loginManager = $containerContext.getComponent('loginManager'))
+#set($localeManager = $containerContext.getComponent('localeManager'))
+
+#if (!$paramusername)
+	#set ($paramusername="@creator")
+#end
+
+## resolve @self, @owner, @creator
+#if($paramusername == "@self")
+	#set($theUser=$action.remoteUser)
+#elseif ($paramusername == "@owner")
+	#set($theUser=$space.getCreator())
+#elseif ($paramusername == "@creator")
+	#set($theUser = $content.getCreator())
+#else
+	#set($theUser = $userManager.resolve($paramusername))
+#end
+	
+
+## resolve display value
+#if ($paramdisplay == "fullname")
+	#set($displayValue = $theUser.getFullName())
+#elseif ($paramdisplay == "username")
+	#set($displayValue = $theUser.getName())
+#elseif ($paramdisplay == "email")
+	#set($displayValue = $theUser.getEmail())
+#elseif ($paramdisplay == "lastlogin")
+	#set($displayValue = $loginManager.getLoginInfo($theUser).getLastSuccessfulLoginDate())
+#elseif ($paramdisplay == "previouslogin")
+	#set($displayValue = $loginManager.getLoginInfo($theUser).getPreviousSuccessfulLoginDate())
+#elseif ($paramdisplay == "locale")
+	#set($displayValue = $localeManager.getLocale($theUser))
+#else
+	#set ($displayValue = "not supported")
+#end	
+
+
+## make the visualization
+#if ($paramprofileLink == $true)
+	<a href="/display/~${theUser.getName()}" class="url fn confluence-userlink userlink-0" data-username="${theUser.getName()}" data-user-hover-bound="true">$displayValue</a>
+#else
+	$displayValue
+#end
+
